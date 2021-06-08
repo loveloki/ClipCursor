@@ -1,5 +1,5 @@
 use core_graphics::{display::CGDisplay, display::CGPoint, display::CGRect};
-use device_query::{DeviceQuery, DeviceState};
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use std::{thread::sleep, time};
 
 fn main() {
@@ -13,7 +13,39 @@ fn main() {
     // init display id
     let last_display = get_mouse_in_which_display(&last_mouse_pos);
 
+    // set which key could move cursor to next display
+    let switch_key = vec![Keycode::Meta, Keycode::Grave];
+
+    let mut _is_key_down = false;
+    // prev press key
+    let mut last_key: Vec<Keycode> = Vec::new();
+
     loop {
+        let keys: Vec<Keycode> = device_state.get_keys();
+
+        // if press some key
+        if !keys.is_empty() {
+          // if new keys length
+            if keys.len() > last_key.len() {
+              _is_key_down = true;
+            } else if _is_key_down {
+              // _is_key_down only equal true once.
+              _is_key_down = false;
+            }
+        } else {
+          // end set _is_key_down to default
+            _is_key_down = false;
+        }
+
+        if keys == switch_key && _is_key_down {
+            println!("ready to move cursor");
+        }
+
+        // final set last_key
+        if keys != last_key {
+          last_key = keys.clone();
+      }
+
         let mouse_pos = device_state.get_mouse().coords;
 
         // if new position not equal old position
@@ -23,16 +55,16 @@ fn main() {
 
             // if cursor move to other display
             if now_display.id != last_display.id {
-              // move cursor back
-              null_display
-                  .move_cursor_to_point(CGPoint {
-                      x: last_mouse_pos.0 as f64,
-                      y: last_mouse_pos.1 as f64,
-                  })
-                  .unwrap();
+                // move cursor back
+                null_display
+                    .move_cursor_to_point(CGPoint {
+                        x: last_mouse_pos.0 as f64,
+                        y: last_mouse_pos.1 as f64,
+                    })
+                    .unwrap();
             } else {
-              // update cursor position
-              last_mouse_pos = mouse_pos;
+                // update cursor position
+                last_mouse_pos = mouse_pos;
             }
         }
 
