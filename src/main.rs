@@ -125,3 +125,21 @@ fn get_active_display() -> Vec<Screen> {
 
     active_displays
 }
+
+//get next display,if current is end display,return first.
+fn get_next_display(current_display: Screen) -> Screen {
+  let all_active_display = get_active_display();
+
+  let mut flag = false;
+
+  for &display in &all_active_display {
+      if flag {
+          return display;
+      }
+      if display.id == current_display.id {
+          flag = true
+      }
+  }
+
+  all_active_display[0]
+}
