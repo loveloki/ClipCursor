@@ -143,3 +143,23 @@ fn get_next_display(current_display: Screen) -> Screen {
 
   all_active_display[0]
 }
+
+// get new position in next display
+fn get_new_position(
+  pos: &(i32, i32),
+  current_display: &Screen,
+  next_display: &Screen,
+) -> (i32, i32) {
+  let pos_x = pos.0 as f64;
+  let pos_y = pos.1 as f64;
+  let display_x1 = current_display.bounds.origin.x;
+  let display_y1 = current_display.bounds.origin.y;
+
+  let x_scale = (pos_x - display_x1) / current_display.bounds.size.width;
+  let y_scale = (pos_y - display_y1) / current_display.bounds.size.height;
+
+  let result_x = x_scale * next_display.bounds.size.width + next_display.bounds.origin.x;
+  let result_y = y_scale * next_display.bounds.size.height + next_display.bounds.origin.y;
+
+  (result_x as i32, result_y as i32)
+}
