@@ -3,15 +3,14 @@ use device_query::{DeviceQuery, DeviceState, Keycode};
 use std::{thread::sleep, time};
 
 fn main() {
-    // get mouse position
     let device_state = DeviceState::new();
     let mut last_mouse_pos = device_state.get_mouse().coords;
 
-    // null display, use it set cursor position
+    // use it set cursor position
     let null_display = CGDisplay::null_display();
 
-    // init display id
-    let last_display = get_mouse_in_which_display(&last_mouse_pos);
+    // init last_display
+    let mut last_display = get_mouse_in_which_display(&last_mouse_pos);
 
     // set which key could move cursor to next display
     let switch_key = vec![Keycode::Meta, Keycode::Grave];
@@ -22,32 +21,9 @@ fn main() {
 
     loop {
         let keys: Vec<Keycode> = device_state.get_keys();
-
-        // if press some key
-        if !keys.is_empty() {
-          // if new keys length
-            if keys.len() > last_key.len() {
-              _is_key_down = true;
-            } else if _is_key_down {
-              // _is_key_down only equal true once.
-              _is_key_down = false;
-            }
-        } else {
-          // end set _is_key_down to default
-            _is_key_down = false;
-        }
-
-        if keys == switch_key && _is_key_down {
-            println!("ready to move cursor");
-        }
-
-        // final set last_key
-        if keys != last_key {
-          last_key = keys.clone();
-      }
-
         let mouse_pos = device_state.get_mouse().coords;
 
+        // deal with mouse
         // if new position not equal old position
         if mouse_pos != last_mouse_pos {
             // get which display is
@@ -68,12 +44,49 @@ fn main() {
             }
         }
 
-        // sleep
-        let sleep_time = time::Duration::from_millis(8);
+        // deal with keyboard
+        // if press some key
+        if !keys.is_empty() {
+            // if new keys length
+            if keys.len() > last_key.len() {
+                _is_key_down = true;
+            } else if _is_key_down {
+                // _is_key_down only equal true once.
+                _is_key_down = false;
+            }
+        } else {
+            // end set _is_key_down to false
+            _is_key_down = false;
+        }
+
+        if keys == switch_key && _is_key_down {
+            // get new mouse position
+            let next_display = get_next_display(last_display);
+            let new_pos = get_new_position(&mouse_pos, &last_display, &next_display);
+
+            // set cursor
+            null_display
+                .move_cursor_to_point(CGPoint {
+                    x: new_pos.0 as f64,
+                    y: new_pos.1 as f64,
+                })
+                .unwrap();
+
+            // set last_display and last_mouse_pos to new value
+            last_display = next_display;
+            last_mouse_pos = new_pos;
+        }
+
+        // final set last_key
+        if keys != last_key {
+            last_key = keys;
+        }
+
+        // sleep thread 20 ms
+        let sleep_time = time::Duration::from_millis(20);
         sleep(sleep_time);
     }
 }
-
 #[derive(Copy, Clone)]
 struct Screen {
     id: u32,
@@ -128,38 +141,38 @@ fn get_active_display() -> Vec<Screen> {
 
 //get next display,if current is end display,return first.
 fn get_next_display(current_display: Screen) -> Screen {
-  let all_active_display = get_active_display();
+    let all_active_display = get_active_display();
 
-  let mut flag = false;
+    let mut flag = false;
 
-  for &display in &all_active_display {
-      if flag {
-          return display;
-      }
-      if display.id == current_display.id {
-          flag = true
-      }
-  }
+    for &display in &all_active_display {
+        if flag {
+            return display;
+        }
+        if display.id == current_display.id {
+            flag = true
+        }
+    }
 
-  all_active_display[0]
+    all_active_display[0]
 }
 
 // get new position in next display
 fn get_new_position(
-  pos: &(i32, i32),
-  current_display: &Screen,
-  next_display: &Screen,
+    pos: &(i32, i32),
+    current_display: &Screen,
+    next_display: &Screen,
 ) -> (i32, i32) {
-  let pos_x = pos.0 as f64;
-  let pos_y = pos.1 as f64;
-  let display_x1 = current_display.bounds.origin.x;
-  let display_y1 = current_display.bounds.origin.y;
+    let pos_x = pos.0 as f64;
+    let pos_y = pos.1 as f64;
+    let display_x1 = current_display.bounds.origin.x;
+    let display_y1 = current_display.bounds.origin.y;
 
-  let x_scale = (pos_x - display_x1) / current_display.bounds.size.width;
-  let y_scale = (pos_y - display_y1) / current_display.bounds.size.height;
+    let x_scale = (pos_x - display_x1) / current_display.bounds.size.width;
+    let y_scale = (pos_y - display_y1) / current_display.bounds.size.height;
 
-  let result_x = x_scale * next_display.bounds.size.width + next_display.bounds.origin.x;
-  let result_y = y_scale * next_display.bounds.size.height + next_display.bounds.origin.y;
+    let result_x = x_scale * next_display.bounds.size.width + next_display.bounds.origin.x;
+    let result_y = y_scale * next_display.bounds.size.height + next_display.bounds.origin.y;
 
-  (result_x as i32, result_y as i32)
+    (result_x as i32, result_y as i32)
 }
